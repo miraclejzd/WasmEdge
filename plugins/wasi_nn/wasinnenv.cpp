@@ -158,6 +158,8 @@ Plugin::Plugin::PluginDescriptor Descriptor{
     /* Version */ {0, 10, 1, 0},
     /* ModuleCount */ 1,
     /* ModuleDescriptions */ MD,
+    /* ComponentCount */ 0,
+    /* ComponentDescriptions */ nullptr,
     /* AddOptions */ addOptions,
 };
 } // namespace
