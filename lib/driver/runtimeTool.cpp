@@ -235,6 +235,8 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
       }
     }
 
+    // FIXME: replace ValVariant and ValType with
+    // InterfaceValue and InterfaceType
     std::vector<ValVariant> FuncArgs;
     std::vector<ValType> FuncArgTypes;
     for (size_t I = 0;

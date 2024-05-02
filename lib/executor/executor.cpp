@@ -6,6 +6,8 @@
 #include "common/errinfo.h"
 #include "common/spdlog.h"
 
+#include <ranges>
+
 namespace WasmEdge {
 namespace Executor {
 
@@ -204,6 +206,30 @@ Executor::asyncInvoke(const Runtime::Instance::FunctionInstance *FuncInst,
       Span<const ValType>) = &Executor::invoke;
   return {FPtr, *this, FuncInst, std::vector(Params.begin(), Params.end()),
           std::vector(ParamTypes.begin(), ParamTypes.end())};
+}
+
+Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
+Executor::invoke(const Runtime::Instance::Component::FunctionInstance *FuncInst,
+                 Span<const InterfaceValue> Params,
+                 Span<const InterfaceType> ParamTypes) {
+  if (unlikely(FuncInst == nullptr)) {
+    spdlog::error(ErrCode::Value::FuncNotFound);
+    return Unexpect(ErrCode::Value::FuncNotFound);
+  }
+
+  // Matching arguments and function type.
+  const auto &FuncType = FuncInst->getFuncType();
+  const auto &PTypes = FuncType.getParamTypes();
+  const auto &RTypes = FuncType.getReturnTypes();
+
+  auto &HostFunc = FuncInst->getHostFunc();
+  Span<InterfaceValue> Rets;
+
+  if (auto Res = HostFunc.run(std::move(Params), Rets); !Res) {
+    return Unexpect(Res);
+  }
+
+  return std::views::zip(Rets, RTypes);
 }
 
 } // namespace Executor

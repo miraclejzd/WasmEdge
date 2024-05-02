@@ -302,12 +302,12 @@ VM::unsafeRunWasmFile(const AST::Module &Module, std::string_view Func,
   }
 }
 
-Expect<std::vector<std::pair<ValVariant, ValType>>>
+Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
 VM::unsafeExecute(const Runtime::Instance::ComponentInstance *CompInst,
-                  std::string_view Func, Span<const ValVariant> Params,
-                  Span<const ValType> ParamTypes) {
+                  std::string_view Func, Span<const InterfaceValue> Params,
+                  Span<const InterfaceType> ParamTypes) {
   // Find exported function by name.
-  Runtime::Instance::FunctionInstance *FuncInst =
+  Runtime::Instance::Component::FunctionInstance *FuncInst =
       CompInst->findFuncExports(Func);
 
   // Execute function.
@@ -490,10 +490,14 @@ Expect<void> VM::unsafeInstantiate() {
   }
 }
 
+// FIXME: InterfaceType and InterfaceValue
 Expect<std::vector<std::pair<ValVariant, ValType>>>
 VM::unsafeExecute(std::string_view Func, Span<const ValVariant> Params,
                   Span<const ValType> ParamTypes) {
   if (ActiveModInst) {
+    // FIXME: narrowing InterfaceType and InterfaceValue to ValType and
+    // ValVariant.
+
     // Execute function and return values with the module instance.
     return unsafeExecute(ActiveModInst.get(), Func, Params, ParamTypes);
   } else if (ActiveCompInst) {
