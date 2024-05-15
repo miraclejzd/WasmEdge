@@ -433,45 +433,11 @@ private:
   // Member data.
   uint64x2_t Data;
 };
-
-struct StrVariant {
-  // Constructors.
-  StrVariant(std::string &&P) noexcept { setData(std::move(P)); }
-
-  // Getter of type.
-  const ValType getType() const noexcept { return TypeCode::String; }
-
-  // Getter of pointer.
-  std::string_view getString() const noexcept {
-    const auto *Ptr = reinterpret_cast<const char *>(toArray()[0]);
-    auto Size = static_cast<size_t>(toArray()[1]);
-    return std::string_view(Ptr, Size);
-  }
-
-private:
-  // Helper function of converting data to array.
-  const std::array<uint64_t, 2> &toArray() const noexcept {
-    return reinterpret_cast<const std::array<uint64_t, 2> &>(Data);
-  }
-  std::array<uint64_t, 2> &toArray() noexcept {
-    return reinterpret_cast<std::array<uint64_t, 2> &>(Data);
-  }
-
-  // Helper function to set the content.
-  void setData(std::string &&S) noexcept {
-    toArray()[0] = reinterpret_cast<uintptr_t>(S.c_str());
-    toArray()[1] = static_cast<uint64_t>(S.size());
-  }
-
-  // Member data.
-  uint64x2_t Data;
-};
-
 using ValVariant =
     Variant<uint32_t, int32_t, uint64_t, int64_t, float, double, uint128_t,
             int128_t, uint64x2_t, int64x2_t, uint32x4_t, int32x4_t, uint16x8_t,
-            int16x8_t, uint8x16_t, int8x16_t, floatx4_t, doublex2_t, RefVariant,
-            StrVariant>;
+            int16x8_t, uint8x16_t, int8x16_t, floatx4_t, doublex2_t,
+            RefVariant>;
 
 // <<<<<<<< Value definitions <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -599,10 +565,6 @@ template <> inline ValType ValTypeFromType<float>() noexcept {
 template <> inline ValType ValTypeFromType<double>() noexcept {
   return ValType(TypeCode::F64);
 }
-// wasm interface types
-template <> inline ValType ValTypeFromType<StrVariant>() noexcept {
-  return ValType(TypeCode::String);
-}
 
 // <<<<<<<< Template to get value type from type <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -623,9 +585,6 @@ inline ValVariant ValueFromType(ValType Type) noexcept {
   case TypeCode::Ref:
   case TypeCode::RefNull:
     return RefVariant(Type);
-  // wasm interface types
-  case TypeCode::String:
-    return StrVariant("");
   default:
     assumingUnreachable();
   }

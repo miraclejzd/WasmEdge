@@ -599,8 +599,6 @@ VM::unsafeGetFunctionList() const {
         Map.emplace_back(Func.first, FuncType);
       }
     });
-  } else if (ActiveCompInst) {
-    return ActiveCompInst->getFuncExports();
   }
   return Map;
 }

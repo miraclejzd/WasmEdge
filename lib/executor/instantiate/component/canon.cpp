@@ -120,7 +120,7 @@ public:
       }
       default: {
         // usual type has no need conversion
-        const ValVariant &Arg = Args[PI++];
+        const ValVariant &Arg = Args[PI++].toValVariant();
         LowerArgs.push_back(Arg);
         break;
       }
@@ -143,11 +143,12 @@ public:
         auto Idx = ResultList[TakeI++].first.get<uint32_t>();
         auto Size = ResultList[TakeI++].first.get<uint32_t>();
         auto Str = Memory->getStringView(Idx, Size);
-        Rets[RI++] = StrVariant(std::string(Str.begin(), Str.end()));
+        Rets[RI++] = std::string(Str.begin(), Str.end());
         break;
       }
       default: {
-        Rets[RI++] = ResultList[TakeI++].first;
+        auto &R = ResultList[TakeI++];
+        Rets[RI++] = liftValue(R.second, R.first);
         break;
       }
       }
@@ -230,10 +231,8 @@ public:
         break;
       }
       default:
-        // usual type has no need conversion
-        // FIXME: need to lift these value
-        const InterfaceValue &Arg = Args[PI++];
-        HigherArgs.push_back(Arg);
+        auto Arg = Args[PI++];
+        HigherArgs.push_back(liftValue(ParamTy, Arg));
         break;
       }
     }
@@ -268,8 +267,7 @@ public:
         break;
       }
       default:
-        // FIXME: lower the value
-        Rets[RI++] = RetVal;
+        Rets[RI++] = RetVal.toValVariant();
         break;
       }
     }

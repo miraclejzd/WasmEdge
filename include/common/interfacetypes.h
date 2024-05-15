@@ -5,6 +5,7 @@
 #include "common/enum_types.hpp"
 #include "common/errcode.h"
 #include "common/int128.h"
+#include "common/types.h"
 #include "common/variant.h"
 
 #include <array>
@@ -103,18 +104,82 @@ public:
   InterfaceValue(int64_t Init) : Val(Init), Ty(convertType<int64_t>::type) {}
   InterfaceValue(float Init) : Val(Init), Ty(convertType<float>::type) {}
   InterfaceValue(double Init) : Val(Init), Ty(convertType<double>::type) {}
-  InterfaceValue(std::string Init)
+  InterfaceValue(std::string &&Init)
       : Val(Init), Ty(convertType<std::string>::type) {}
 
-  template <typename T> const T &get() const { std::get<T>(Val); }
-  template <typename T> T &get() { std::get<T>(Val); }
+  struct VisitVal {
+    ValVariant operator()(uint8_t V) const { return static_cast<uint32_t>(V); }
+    ValVariant operator()(uint16_t V) const { return static_cast<uint32_t>(V); }
+    ValVariant operator()(uint32_t V) const { return V; }
+    ValVariant operator()(uint64_t V) const { return V; }
+    ValVariant operator()(int8_t V) const { return static_cast<int32_t>(V); }
+    ValVariant operator()(int16_t V) const { return static_cast<int32_t>(V); }
+    ValVariant operator()(int32_t V) const { return V; }
+    ValVariant operator()(int64_t V) const { return V; }
+    ValVariant operator()(float V) const { return V; }
+    ValVariant operator()(double V) const { return V; }
+    // Some cases should fail.
+    ValVariant operator()(std::string) { throw 1; }
+  };
+  ValVariant toValVariant() const { return std::visit(VisitVal(), Val); }
+
+  template <typename T> const T &get() const noexcept {
+    return std::get<T>(Val);
+  }
+  template <typename T> T &get() noexcept { return std::get<T>(Val); }
 
 private:
   std::variant<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
-               int64_t, float, double, std::string, ValVariant>
+               int64_t, float, double, std::string>
       Val;
   InterfaceType Ty;
 };
+
+InterfaceValue liftValue(const ValType &T, ValVariant &V) {
+  switch (T.getCode()) {
+  case TypeCode::I8:
+    return InterfaceValue(static_cast<int8_t>(V.get<int32_t>()));
+  case TypeCode::I16:
+    return InterfaceValue(static_cast<int16_t>(V.get<int32_t>()));
+  case TypeCode::I32:
+    return InterfaceValue(V.get<int32_t>());
+  case TypeCode::I64:
+    return InterfaceValue(V.get<int64_t>());
+  case TypeCode::F32:
+    return InterfaceValue(V.get<float>());
+  case TypeCode::F64:
+    return InterfaceValue(V.get<double>());
+  default:
+    throw 1;
+  }
+}
+
+InterfaceValue liftValue(const InterfaceType &T, ValVariant &V) {
+  switch (T.getCode()) {
+  case ITypeCode::I8:
+    return InterfaceValue(static_cast<int8_t>(V.get<int32_t>()));
+  case ITypeCode::I16:
+    return InterfaceValue(static_cast<int16_t>(V.get<int32_t>()));
+  case ITypeCode::I32:
+    return InterfaceValue(V.get<int32_t>());
+  case ITypeCode::I64:
+    return InterfaceValue(V.get<int64_t>());
+  case ITypeCode::U8:
+    return InterfaceValue(static_cast<uint8_t>(V.get<int32_t>()));
+  case ITypeCode::U16:
+    return InterfaceValue(static_cast<uint16_t>(V.get<int32_t>()));
+  case ITypeCode::U32:
+    return InterfaceValue(V.get<uint32_t>());
+  case ITypeCode::U64:
+    return InterfaceValue(V.get<uint64_t>());
+  case ITypeCode::F32:
+    return InterfaceValue(V.get<float>());
+  case ITypeCode::F64:
+    return InterfaceValue(V.get<double>());
+  default:
+    throw 1;
+  }
+}
 
 class FunctionType {
 public:
@@ -132,6 +197,49 @@ private:
   std::vector<InterfaceType> ResList;
 };
 
+namespace Component {
+
+class FunctionType {
+public:
+  /// Constructors.
+  FunctionType() noexcept = default;
+  FunctionType(Span<const InterfaceType> P,
+               Span<const InterfaceType> R) noexcept
+      : ParamTypes(P.begin(), P.end()), ReturnTypes(R.begin(), R.end()) {}
+
+  /// `==` and `!=` operator overloadings.
+  friend bool operator==(const FunctionType &LHS,
+                         const FunctionType &RHS) noexcept {
+    return LHS.ParamTypes == RHS.ParamTypes &&
+           LHS.ReturnTypes == RHS.ReturnTypes;
+  }
+
+  friend bool operator!=(const FunctionType &LHS,
+                         const FunctionType &RHS) noexcept {
+    return !(LHS == RHS);
+  }
+
+  /// Getter of param types.
+  const std::vector<InterfaceType> &getParamTypes() const noexcept {
+    return ParamTypes;
+  }
+  std::vector<InterfaceType> &getParamTypes() noexcept { return ParamTypes; }
+
+  /// Getter of return types.
+  const std::vector<InterfaceType> &getReturnTypes() const noexcept {
+    return ReturnTypes;
+  }
+  std::vector<InterfaceType> &getReturnTypes() noexcept { return ReturnTypes; }
+
+private:
+  /// \name Data of FunctionType.
+  /// @{
+  std::vector<InterfaceType> ParamTypes;
+  std::vector<InterfaceType> ReturnTypes;
+  /// @}
+};
+
+} // namespace Component
 } // namespace WasmEdge
 
 template <>

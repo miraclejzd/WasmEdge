@@ -95,7 +95,7 @@ Executor::instantiate(Runtime::StoreManager &,
         case SortCase::Func: {
           auto *FuncInst = CompInst.getComponentInstance(Out.getComponent())
                                ->getCoreFunctionInstance(Out.getIndex());
-          CompInst.addFunctionInstance(FuncInst);
+          CompInst.addCoreFunctionInstance(FuncInst);
           break;
         }
         case SortCase::Value: // TODO: need real use cases to analysis how to
