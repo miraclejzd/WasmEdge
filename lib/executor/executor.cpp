@@ -229,7 +229,7 @@ Executor::invoke(const Runtime::Instance::Component::FunctionInstance *FuncInst,
     return Unexpect(Res);
   }
 
-  return std::views::zip(Rets, RTypes);
+  return std::ranges::view::zip(Rets, RTypes);
 }
 
 } // namespace Executor

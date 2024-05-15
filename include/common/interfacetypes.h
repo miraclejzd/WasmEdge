@@ -28,6 +28,7 @@ enum class ITypeCode : Byte {
   U64,
   F32,
   F64,
+  V128,
   String,
   List
 };
@@ -38,9 +39,65 @@ public:
   InterfaceType(ITypeCode C) : Code{C}, TyArgs{} {}
   InterfaceType(ITypeCode C, InterfaceType &&T)
       : Code{C}, TyArgs{std::move(T)} {}
+  InterfaceType(const ValType &T) : TyArgs{} {
+    switch (T.getCode()) {
+    case TypeCode::I8:
+      Code = ITypeCode::I8;
+      break;
+    case TypeCode::I16:
+      Code = ITypeCode::I16;
+      break;
+    case TypeCode::I32:
+      Code = ITypeCode::I32;
+      break;
+    case TypeCode::I64:
+      Code = ITypeCode::I64;
+      break;
+    case TypeCode::F32:
+      Code = ITypeCode::F32;
+      break;
+    case TypeCode::F64:
+      Code = ITypeCode::F64;
+      break;
+    case TypeCode::V128:
+      Code = ITypeCode::V128;
+      break;
+    default:
+      throw 1;
+    }
+  }
 
   const ITypeCode &getCode() const noexcept { return Code; }
   Span<const InterfaceType> getTypeArgs() const noexcept { return TyArgs; }
+
+  ValType toValType() const {
+    switch (Code) {
+    case ITypeCode::I8:
+      return TypeCode::I8;
+    case ITypeCode::I16:
+      return TypeCode::I16;
+    case ITypeCode::I32:
+      return TypeCode::I32;
+    case ITypeCode::I64:
+      return TypeCode::I64;
+    case ITypeCode::U8:
+      return TypeCode::I8;
+    case ITypeCode::U16:
+      return TypeCode::I16;
+    case ITypeCode::U32:
+      return TypeCode::I32;
+    case ITypeCode::U64:
+      return TypeCode::I64;
+    case ITypeCode::F32:
+      return TypeCode::F32;
+    case ITypeCode::F64:
+      return TypeCode::F64;
+    case ITypeCode::V128:
+      return TypeCode::V128;
+    default:
+      throw 1;
+    }
+  }
 
 private:
   ITypeCode Code;
@@ -81,6 +138,9 @@ template <> struct convertType<float> {
 template <> struct convertType<double> {
   inline static const InterfaceType type = InterfaceType(ITypeCode::F64);
 };
+template <> struct convertType<uint128_t> {
+  inline static const InterfaceType type = InterfaceType(ITypeCode::V128);
+};
 template <> struct convertType<std::string> {
   inline static const InterfaceType type = InterfaceType(ITypeCode::String);
 };
@@ -104,6 +164,7 @@ public:
   InterfaceValue(int64_t Init) : Val(Init), Ty(convertType<int64_t>::type) {}
   InterfaceValue(float Init) : Val(Init), Ty(convertType<float>::type) {}
   InterfaceValue(double Init) : Val(Init), Ty(convertType<double>::type) {}
+  InterfaceValue(int128_t Init) : Val(Init), Ty(convertType<int128_t>::type) {}
   InterfaceValue(std::string &&Init)
       : Val(Init), Ty(convertType<std::string>::type) {}
 
@@ -116,6 +177,7 @@ public:
     ValVariant operator()(int16_t V) const { return static_cast<int32_t>(V); }
     ValVariant operator()(int32_t V) const { return V; }
     ValVariant operator()(int64_t V) const { return V; }
+    ValVariant operator()(int128_t V) const { return V; }
     ValVariant operator()(float V) const { return V; }
     ValVariant operator()(double V) const { return V; }
     // Some cases should fail.
@@ -130,7 +192,7 @@ public:
 
 private:
   std::variant<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
-               int64_t, float, double, std::string>
+               int64_t, int128_t, float, double, std::string>
       Val;
   InterfaceType Ty;
 };
@@ -145,6 +207,8 @@ InterfaceValue liftValue(const ValType &T, ValVariant &V) {
     return InterfaceValue(V.get<int32_t>());
   case TypeCode::I64:
     return InterfaceValue(V.get<int64_t>());
+  case TypeCode::V128:
+    return InterfaceValue(V.get<int128_t>());
   case TypeCode::F32:
     return InterfaceValue(V.get<float>());
   case TypeCode::F64:
@@ -164,6 +228,8 @@ InterfaceValue liftValue(const InterfaceType &T, ValVariant &V) {
     return InterfaceValue(V.get<int32_t>());
   case ITypeCode::I64:
     return InterfaceValue(V.get<int64_t>());
+  case ITypeCode::V128:
+    return InterfaceValue(V.get<int128_t>());
   case ITypeCode::U8:
     return InterfaceValue(static_cast<uint8_t>(V.get<int32_t>()));
   case ITypeCode::U16:
@@ -197,49 +263,6 @@ private:
   std::vector<InterfaceType> ResList;
 };
 
-namespace Component {
-
-class FunctionType {
-public:
-  /// Constructors.
-  FunctionType() noexcept = default;
-  FunctionType(Span<const InterfaceType> P,
-               Span<const InterfaceType> R) noexcept
-      : ParamTypes(P.begin(), P.end()), ReturnTypes(R.begin(), R.end()) {}
-
-  /// `==` and `!=` operator overloadings.
-  friend bool operator==(const FunctionType &LHS,
-                         const FunctionType &RHS) noexcept {
-    return LHS.ParamTypes == RHS.ParamTypes &&
-           LHS.ReturnTypes == RHS.ReturnTypes;
-  }
-
-  friend bool operator!=(const FunctionType &LHS,
-                         const FunctionType &RHS) noexcept {
-    return !(LHS == RHS);
-  }
-
-  /// Getter of param types.
-  const std::vector<InterfaceType> &getParamTypes() const noexcept {
-    return ParamTypes;
-  }
-  std::vector<InterfaceType> &getParamTypes() noexcept { return ParamTypes; }
-
-  /// Getter of return types.
-  const std::vector<InterfaceType> &getReturnTypes() const noexcept {
-    return ReturnTypes;
-  }
-  std::vector<InterfaceType> &getReturnTypes() noexcept { return ReturnTypes; }
-
-private:
-  /// \name Data of FunctionType.
-  /// @{
-  std::vector<InterfaceType> ParamTypes;
-  std::vector<InterfaceType> ReturnTypes;
-  /// @}
-};
-
-} // namespace Component
 } // namespace WasmEdge
 
 template <>
@@ -304,7 +327,6 @@ struct fmt::formatter<WasmEdge::FunctionType>
   fmt::format_context::iterator
   format(const WasmEdge::FunctionType &Type,
          fmt::format_context &Ctx) const noexcept {
-    using namespace WasmEdge::AST::Component;
     using namespace std::literals;
 
     fmt::memory_buffer Buffer;

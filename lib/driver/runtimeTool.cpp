@@ -3,6 +3,7 @@
 
 #include "common/configure.h"
 #include "common/filesystem.h"
+#include "common/interfacetypes.h"
 #include "common/spdlog.h"
 #include "common/types.h"
 #include "common/version.h"
@@ -212,7 +213,7 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
     const auto InitFunc = "_initialize"s;
 
     bool HasInit = false;
-    AST::FunctionType FuncType;
+    WasmEdge::FunctionType FuncType;
 
     for (const auto &Func : VM.getFunctionList()) {
       if (Func.first == InitFunc) {
@@ -235,44 +236,42 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
       }
     }
 
-    // FIXME: replace ValVariant and ValType with
-    // InterfaceValue and InterfaceType
-    std::vector<ValVariant> FuncArgs;
-    std::vector<ValType> FuncArgTypes;
+    std::vector<InterfaceValue> FuncArgs;
+    std::vector<InterfaceType> FuncArgTypes;
     for (size_t I = 0;
          I < FuncType.getParamTypes().size() && I + 1 < Opt.Args.value().size();
          ++I) {
       switch (FuncType.getParamTypes()[I].getCode()) {
-      case TypeCode::I32: {
+      case ITypeCode::I32: {
         const uint32_t Value =
             static_cast<uint32_t>(std::stol(Opt.Args.value()[I + 1]));
         FuncArgs.emplace_back(Value);
-        FuncArgTypes.emplace_back(TypeCode::I32);
+        FuncArgTypes.emplace_back(ITypeCode::I32);
         break;
       }
-      case TypeCode::I64: {
+      case ITypeCode::I64: {
         const uint64_t Value =
             static_cast<uint64_t>(std::stoll(Opt.Args.value()[I + 1]));
         FuncArgs.emplace_back(Value);
-        FuncArgTypes.emplace_back(TypeCode::I64);
+        FuncArgTypes.emplace_back(ITypeCode::I64);
         break;
       }
-      case TypeCode::F32: {
+      case ITypeCode::F32: {
         const float Value = std::stof(Opt.Args.value()[I + 1]);
         FuncArgs.emplace_back(Value);
-        FuncArgTypes.emplace_back(TypeCode::F32);
+        FuncArgTypes.emplace_back(ITypeCode::F32);
         break;
       }
-      case TypeCode::F64: {
+      case ITypeCode::F64: {
         const double Value = std::stod(Opt.Args.value()[I + 1]);
         FuncArgs.emplace_back(Value);
-        FuncArgTypes.emplace_back(TypeCode::F64);
+        FuncArgTypes.emplace_back(ITypeCode::F64);
         break;
       }
-      case TypeCode::String: {
+      case ITypeCode::String: {
         std::string &Value = Opt.Args.value()[I + 1];
-        FuncArgs.emplace_back(StrVariant(std::move(Value)));
-        FuncArgTypes.emplace_back(TypeCode::String);
+        FuncArgs.emplace_back(std::move(Value));
+        FuncArgTypes.emplace_back(ITypeCode::String);
         break;
       }
       /// TODO: FuncRef and ExternRef
@@ -286,7 +285,7 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
         const uint64_t Value =
             static_cast<uint64_t>(std::stoll(Opt.Args.value()[I]));
         FuncArgs.emplace_back(Value);
-        FuncArgTypes.emplace_back(TypeCode::I64);
+        FuncArgTypes.emplace_back(ITypeCode::I64);
       }
     }
 
@@ -300,19 +299,19 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
       /// Print results.
       for (size_t I = 0; I < Result->size(); ++I) {
         switch ((*Result)[I].second.getCode()) {
-        case TypeCode::I32:
+        case ITypeCode::I32:
           std::cout << (*Result)[I].first.get<uint32_t>() << '\n';
           break;
-        case TypeCode::I64:
+        case ITypeCode::I64:
           std::cout << (*Result)[I].first.get<uint64_t>() << '\n';
           break;
-        case TypeCode::F32:
+        case ITypeCode::F32:
           std::cout << (*Result)[I].first.get<float>() << '\n';
           break;
-        case TypeCode::F64:
+        case ITypeCode::F64:
           std::cout << (*Result)[I].first.get<double>() << '\n';
           break;
-        case TypeCode::V128:
+        case ITypeCode::V128:
           std::cout << (*Result)[I].first.get<uint128_t>() << '\n';
           break;
         /// TODO: FuncRef and ExternRef

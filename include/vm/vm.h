@@ -17,6 +17,7 @@
 #include "common/configure.h"
 #include "common/errcode.h"
 #include "common/filesystem.h"
+#include "common/interfacetypes.h"
 #include "common/types.h"
 
 #include "executor/executor.h"
@@ -172,7 +173,7 @@ public:
   }
 
   /// Get list of callable functions and corresponding function types.
-  std::vector<std::pair<std::string, const AST::FunctionType &>>
+  std::vector<std::pair<std::string, const WasmEdge::FunctionType &>>
   getFunctionList() const {
     std::shared_lock Lock(Mutex);
     return unsafeGetFunctionList();
@@ -244,18 +245,18 @@ private:
 
   Expect<void> unsafeInstantiate();
 
-  Expect<std::vector<std::pair<ValVariant, ValType>>>
-  unsafeExecute(std::string_view Func, Span<const ValVariant> Params = {},
-                Span<const ValType> ParamTypes = {});
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
+  unsafeExecute(std::string_view Func, Span<const InterfaceValue> Params = {},
+                Span<const InterfaceType> ParamTypes = {});
 
-  Expect<std::vector<std::pair<ValVariant, ValType>>>
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
   unsafeExecute(std::string_view Mod, std::string_view Func,
-                Span<const ValVariant> Params = {},
-                Span<const ValType> ParamTypes = {});
+                Span<const InterfaceValue> Params = {},
+                Span<const InterfaceType> ParamTypes = {});
 
   void unsafeCleanup();
 
-  std::vector<std::pair<std::string, const AST::FunctionType &>>
+  std::vector<std::pair<std::string, const WasmEdge::FunctionType &>>
   unsafeGetFunctionList() const;
 
   Runtime::Instance::ModuleInstance *
@@ -277,10 +278,10 @@ private:
                 std::string_view Func, Span<const ValVariant> Params = {},
                 Span<const ValType> ParamTypes = {});
 
-  Expect<std::vector<std::pair<ValVariant, ValType>>>
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
   unsafeExecute(const Runtime::Instance::ComponentInstance *CompInst,
-                std::string_view Func, Span<const ValVariant> Params = {},
-                Span<const ValType> ParamTypes = {});
+                std::string_view Func, Span<const InterfaceValue> Params = {},
+                Span<const InterfaceType> ParamTypes = {});
 
   /// \name VM environment.
   /// @{

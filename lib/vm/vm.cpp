@@ -491,15 +491,30 @@ Expect<void> VM::unsafeInstantiate() {
 }
 
 // FIXME: InterfaceType and InterfaceValue
-Expect<std::vector<std::pair<ValVariant, ValType>>>
-VM::unsafeExecute(std::string_view Func, Span<const ValVariant> Params,
-                  Span<const ValType> ParamTypes) {
+Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
+VM::unsafeExecute(std::string_view Func, Span<const InterfaceValue> Params,
+                  Span<const InterfaceType> ParamTypes) {
   if (ActiveModInst) {
-    // FIXME: narrowing InterfaceType and InterfaceValue to ValType and
-    // ValVariant.
-
     // Execute function and return values with the module instance.
-    return unsafeExecute(ActiveModInst.get(), Func, Params, ParamTypes);
+    std::vector<const ValVariant> LowerParams;
+    std::vector<const ValType> LowerParamTypes;
+    for (auto &P : Params) {
+      LowerParams.push_back(P.toValVariant());
+    }
+    for (auto &P : ParamTypes) {
+      LowerParamTypes.push_back(P.toValType());
+    }
+    auto Res =
+        unsafeExecute(ActiveModInst.get(), Func, LowerParams, LowerParamTypes);
+    if (!Res) {
+      return Unexpect(Res);
+    }
+    std::vector<std::pair<InterfaceValue, InterfaceType>> R;
+    for (auto &RR : *Res) {
+      R.push_back(
+          std::pair(liftValue(RR.second, RR.first), InterfaceType(RR.second)));
+    }
+    return R;
   } else if (ActiveCompInst) {
     return unsafeExecute(ActiveCompInst.get(), Func, Params, ParamTypes);
   }
@@ -508,10 +523,10 @@ VM::unsafeExecute(std::string_view Func, Span<const ValVariant> Params,
   return Unexpect(ErrCode::Value::WrongInstanceAddress);
 }
 
-Expect<std::vector<std::pair<ValVariant, ValType>>>
+Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
 VM::unsafeExecute(std::string_view ModName, std::string_view Func,
-                  Span<const ValVariant> Params,
-                  Span<const ValType> ParamTypes) {
+                  Span<const InterfaceValue> Params,
+                  Span<const InterfaceType> ParamTypes) {
   // Find module instance by name.
   const auto *FindModInst = StoreRef.findModule(ModName);
   if (FindModInst != nullptr) {
@@ -588,9 +603,9 @@ void VM::unsafeCleanup() {
   Stage = VMStage::Inited;
 }
 
-std::vector<std::pair<std::string, const AST::FunctionType &>>
+std::vector<std::pair<std::string, const WasmEdge::FunctionType &>>
 VM::unsafeGetFunctionList() const {
-  std::vector<std::pair<std::string, const AST::FunctionType &>> Map;
+  std::vector<std::pair<std::string, const WasmEdge::FunctionType &>> Map;
   if (ActiveModInst) {
     ActiveModInst->getFuncExports([&](const auto &FuncExports) {
       Map.reserve(FuncExports.size());
@@ -599,6 +614,8 @@ VM::unsafeGetFunctionList() const {
         Map.emplace_back(Func.first, FuncType);
       }
     });
+  } else if (ActiveCompInst) {
+    ActiveCompInst->getFuncExports();
   }
   return Map;
 }
