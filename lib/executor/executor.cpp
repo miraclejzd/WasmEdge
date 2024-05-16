@@ -6,8 +6,6 @@
 #include "common/errinfo.h"
 #include "common/spdlog.h"
 
-#include <ranges>
-
 namespace WasmEdge {
 namespace Executor {
 
@@ -220,6 +218,15 @@ Executor::invoke(const Runtime::Instance::Component::FunctionInstance *FuncInst,
   // Matching arguments and function type.
   const auto &FuncType = FuncInst->getFuncType();
   const auto &PTypes = FuncType.getParamTypes();
+
+  auto ExpPType = PTypes.begin();
+  for (auto &ComingInPType : ParamTypes) {
+    if (ComingInPType != *ExpPType) {
+      spdlog::error("expected {} but got {}", *ExpPType, ComingInPType);
+      return Unexpect(ErrCode::Value::TypeCheckFailed);
+    }
+  }
+
   const auto &RTypes = FuncType.getReturnTypes();
 
   auto &HostFunc = FuncInst->getHostFunc();
@@ -229,7 +236,13 @@ Executor::invoke(const Runtime::Instance::Component::FunctionInstance *FuncInst,
     return Unexpect(Res);
   }
 
-  return std::ranges::view::zip(Rets, RTypes);
+  std::vector<std::pair<InterfaceValue, InterfaceType>> R;
+  auto RType = RTypes.begin();
+  for (auto &&V : Rets) {
+    R.push_back(std::pair(V, *RType));
+    RType++;
+  }
+  return R;
 }
 
 } // namespace Executor

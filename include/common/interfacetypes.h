@@ -99,6 +99,26 @@ public:
     }
   }
 
+  bool operator!=(const InterfaceType &Other) const {
+    switch (Other.getCode()) {
+    case ITypeCode::List: {
+      if (getCode() != Other.getCode()) {
+        return true;
+      }
+      auto Arg = TyArgs.begin();
+      for (auto &OtherArg : Other.getTypeArgs()) {
+        if (*Arg != OtherArg) {
+          return true;
+        }
+      }
+      return false;
+    }
+    default: {
+      return getCode() != Other.getCode();
+    }
+    }
+  }
+
 private:
   ITypeCode Code;
   std::vector<InterfaceType> TyArgs;

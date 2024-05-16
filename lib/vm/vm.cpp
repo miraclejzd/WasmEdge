@@ -531,7 +531,24 @@ VM::unsafeExecute(std::string_view ModName, std::string_view Func,
   const auto *FindModInst = StoreRef.findModule(ModName);
   if (FindModInst != nullptr) {
     // Execute function and return values with the module instance.
-    return unsafeExecute(FindModInst, Func, Params, ParamTypes);
+    std::vector<const ValVariant> LowerParams;
+    std::vector<const ValType> LowerParamTypes;
+    for (auto &P : Params) {
+      LowerParams.push_back(P.toValVariant());
+    }
+    for (auto &P : ParamTypes) {
+      LowerParamTypes.push_back(P.toValType());
+    }
+    auto Res = unsafeExecute(FindModInst, Func, LowerParams, LowerParamTypes);
+    if (!Res) {
+      return Unexpect(Res);
+    }
+    std::vector<std::pair<InterfaceValue, InterfaceType>> R;
+    for (auto &RR : *Res) {
+      R.push_back(
+          std::pair(liftValue(RR.second, RR.first), InterfaceType(RR.second)));
+    }
+    return R;
   } else {
     spdlog::error(ErrCode::Value::WrongInstanceAddress);
     spdlog::error(ErrInfo::InfoExecuting(ModName, Func));
@@ -559,24 +576,24 @@ VM::unsafeExecute(const Runtime::Instance::ModuleInstance *ModInst,
   }
 }
 
-Async<Expect<std::vector<std::pair<ValVariant, ValType>>>>
-VM::asyncExecute(std::string_view Func, Span<const ValVariant> Params,
-                 Span<const ValType> ParamTypes) {
-  Expect<std::vector<std::pair<ValVariant, ValType>>> (VM::*FPtr)(
-      std::string_view, Span<const ValVariant>, Span<const ValType>) =
+Async<Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>>
+VM::asyncExecute(std::string_view Func, Span<const InterfaceValue> Params,
+                 Span<const InterfaceType> ParamTypes) {
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>> (VM::*FPtr)(
+      std::string_view, Span<const InterfaceValue>, Span<const InterfaceType>) =
       &VM::execute;
   return {FPtr, *this, std::string(Func),
           std::vector(Params.begin(), Params.end()),
           std::vector(ParamTypes.begin(), ParamTypes.end())};
 }
 
-Async<Expect<std::vector<std::pair<ValVariant, ValType>>>>
+Async<Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>>
 VM::asyncExecute(std::string_view ModName, std::string_view Func,
-                 Span<const ValVariant> Params,
-                 Span<const ValType> ParamTypes) {
-  Expect<std::vector<std::pair<ValVariant, ValType>>> (VM::*FPtr)(
-      std::string_view, std::string_view, Span<const ValVariant>,
-      Span<const ValType>) = &VM::execute;
+                 Span<const InterfaceValue> Params,
+                 Span<const InterfaceType> ParamTypes) {
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>> (VM::*FPtr)(
+      std::string_view, std::string_view, Span<const InterfaceValue>,
+      Span<const InterfaceType>) = &VM::execute;
   return {FPtr,
           *this,
           std::string(ModName),

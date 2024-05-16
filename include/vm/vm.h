@@ -135,32 +135,32 @@ public:
 
   /// ======= Functions can be called after instantiated stage. =======
   /// Execute wasm with given input.
-  Expect<std::vector<std::pair<ValVariant, ValType>>>
-  execute(std::string_view Func, Span<const ValVariant> Params = {},
-          Span<const ValType> ParamTypes = {}) {
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
+  execute(std::string_view Func, Span<const InterfaceValue> Params = {},
+          Span<const InterfaceType> ParamTypes = {}) {
     std::shared_lock Lock(Mutex);
     return unsafeExecute(Func, Params, ParamTypes);
   }
 
   /// Execute function of registered module with given input.
-  Expect<std::vector<std::pair<ValVariant, ValType>>>
+  Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>
   execute(std::string_view ModName, std::string_view Func,
-          Span<const ValVariant> Params = {},
-          Span<const ValType> ParamTypes = {}) {
+          Span<const InterfaceValue> Params = {},
+          Span<const InterfaceType> ParamTypes = {}) {
     std::shared_lock Lock(Mutex);
     return unsafeExecute(ModName, Func, Params, ParamTypes);
   }
 
   /// Asynchronous execute wasm with given input.
-  Async<Expect<std::vector<std::pair<ValVariant, ValType>>>>
-  asyncExecute(std::string_view Func, Span<const ValVariant> Params = {},
-               Span<const ValType> ParamTypes = {});
+  Async<Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>>
+  asyncExecute(std::string_view Func, Span<const InterfaceValue> Params = {},
+               Span<const InterfaceType> ParamTypes = {});
 
   /// Asynchronous execute function of registered module with given input.
-  Async<Expect<std::vector<std::pair<ValVariant, ValType>>>>
+  Async<Expect<std::vector<std::pair<InterfaceValue, InterfaceType>>>>
   asyncExecute(std::string_view ModName, std::string_view Func,
-               Span<const ValVariant> Params = {},
-               Span<const ValType> ParamTypes = {});
+               Span<const InterfaceValue> Params = {},
+               Span<const InterfaceType> ParamTypes = {});
 
   /// Stop execution
   void stop() noexcept { ExecutorEngine.stop(); }
